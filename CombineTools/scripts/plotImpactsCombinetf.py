@@ -11,6 +11,7 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.TH1.AddDirectory(0)
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--groups', '-g', action='store_true', help='use groups')
 parser.add_argument('--input', '-i', help='input fitresults file')
 parser.add_argument('--output', '-o', help='name of the output file to create')
 parser.add_argument('--translate', '-t', help='JSON file for remapping of parameter names')
@@ -65,12 +66,34 @@ rootfile=ROOT.TFile.Open(args.input)
 
 th2d_impacts=rootfile.Get("nuisance_impact_mu")
 th2d_covariance=rootfile.Get("covariance_matrix_channelmu")
+th2d_group_impacts=rootfile.Get("nuisance_group_impact_mu")
 
 data["params"] = []
 data["method"] = "default"
 data["POIs"] = [{"fit": [1-math.sqrt(th2d_covariance.GetBinContent(1,1)),1.0,1+math.sqrt(th2d_covariance.GetBinContent(1,1))],"name": "r"}]
 
+group_names = []
+
+if args.groups:
+    for i in range(1,th2d_group_impacts.GetNbinsY()+1):
+        group_name = th2d_group_impacts.GetYaxis().GetBinLabel(i)
+        if group_name == "stat":
+            continue
+        else:
+            group_names.append(group_name)
+            data["params"].append({"name" : th2d_group_impacts.GetYaxis().GetBinLabel(i), "impact_r" : th2d_group_impacts.GetBinContent(1,i), "prefit" : [-1,0,1], "r" : [1.0-th2d_group_impacts.GetBinContent(1,i),1.0,1+th2d_group_impacts.GetBinContent(1,i)], "type" : "Gaussian", "fit" : [-1,0,1]})
+
+#"fit" : [1-math.sqrt(th2d_covariance.GetBinContent(i+1,i+1)),1.0,1+math.sqrt(th2d_covariance.GetBinContent(i+1,i+1))], 
+
+
 for i in range(1,th2d_impacts.GetNbinsY()+1):
+    found=False
+    for j in range(len(group_names)):
+        if group_names[j] in th2d_impacts.GetYaxis().GetBinLabel(i):
+            found=True
+    if found:
+        continue
+        
     data["params"].append({"name" : th2d_impacts.GetYaxis().GetBinLabel(i), "impact_r" : th2d_impacts.GetBinContent(1,i), "prefit" : [-1,0,1], "fit" : [1-math.sqrt(th2d_covariance.GetBinContent(i+1,i+1)),1.0,1+math.sqrt(th2d_covariance.GetBinContent(i+1,i+1))], "r" : [1.0-th2d_impacts.GetBinContent(1,i),1.0,1+th2d_impacts.GetBinContent(1,i)], "type" : "Gaussian"})
 
 # Set the global plotting style
@@ -179,7 +202,7 @@ for page in xrange(n):
         if pdata[p]['type'] != 'Unconstrained':
             pre_err_hi = (pre[2] - pre[1])
             pre_err_lo = (pre[1] - pre[0])
-
+            
             if externalPullDef:
                 fit_err_hi = (fit[2] - fit[1])
                 fit_err_lo = (fit[1] - fit[0])
@@ -282,9 +305,10 @@ for page in xrange(n):
         g_check.Draw('PSAME')
 
     # Back to the first pad to draw the pulls graph
-    pads[0].cd()
-    plot.Set(g_pulls, MarkerSize=0.8, LineWidth=2)
-    g_pulls.Draw('PSAME')
+    if not args.groups:
+        pads[0].cd()
+        plot.Set(g_pulls, MarkerSize=0.8, LineWidth=2)
+        g_pulls.Draw('PSAME')
 
     # And back to the second pad to draw the impacts graphs
     pads[1].cd()
