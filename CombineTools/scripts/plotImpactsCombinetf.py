@@ -93,8 +93,11 @@ for i in range(1,th2d_impacts.GetNbinsY()+1):
             found=True
     if found:
         continue
+
+    if th2d_impacts.GetYaxis().GetBinLabel(i) == "etopbin0norm":
+        continue
         
-    data["params"].append({"name" : th2d_impacts.GetYaxis().GetBinLabel(i), "impact_r" : th2d_impacts.GetBinContent(1,i), "prefit" : [-1,0,1], "fit" : [1-math.sqrt(th2d_covariance.GetBinContent(i+1,i+1)),1.0,1+math.sqrt(th2d_covariance.GetBinContent(i+1,i+1))], "r" : [1.0-th2d_impacts.GetBinContent(1,i),1.0,1+th2d_impacts.GetBinContent(1,i)], "type" : "Gaussian"})
+    data["params"].append({"name" : th2d_impacts.GetYaxis().GetBinLabel(i), "impact_r" : th2d_impacts.GetBinContent(1,i), "prefit" : [-1,0,1], "fit" : [1-math.sqrt(th2d_covariance.GetBinContent(i+2,i+2)),1.0,1+math.sqrt(th2d_covariance.GetBinContent(i+2,i+2))], "r" : [1.0-th2d_impacts.GetBinContent(1,i),1.0,1+th2d_impacts.GetBinContent(1,i)], "type" : "Gaussian"})
 
 # Set the global plotting style
 plot.ModTDRStyle(l=args.left_margin, b=0.10, width=(900 if args.checkboxes else 700), height=args.height)
